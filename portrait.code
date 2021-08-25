@@ -1,0 +1,87 @@
+/*GNU GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
+
+ Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.*/
+ 
+ 
+//letakkan variabel ini di action|dialog_return
+bool isPortrait = false;
+string addportrait = "";
+
+//letakkan di action|dialog_return, letakkan variabel ini di bawah if (infoDat.at(0) == "dialog_name" && infoDat.at(1) == "vending") vending = true;
+if (infoDat.at(0) == "dialog_name" && infoDat.at(1) == "portrait") isPortrait = true;
+
+//letakkan di atas if (vending_buy) dalam action|dialog_return
+
+//letakkan di sendWorld di bawah case 3528:
+case 3818: //Portrait
+		{
+			int xx = i % xSize, yy = i / xSize;
+			SendCanvasData(peer, worldInfo->items[i].foreground, worldInfo->items[i].background, xx, yy, worldInfo->items[i].intdata, getItemDef(worldInfo->items[i].intdata).name);
+			break;
+		}
+//letakkan di main.cpp di action|dialog_return sesuaikan dengan kelompoknya, yaitu di kelompok if (is...)
+	      if (isPortrait) {
+		   if (infoDat[0] == "addportrait") addportrait = infoDat[1];
+		   for (ENetPeer* currentPeer = server->peers; currentPeer < &server->peers[server->peerCount]; ++currentPeer) {
+		   if (currentPeer->state != ENET_PEER_STATE_CONNECTED) continue;
+		   if (isHere(peer, currentPeer)) {
+						     if (static_cast<PlayerInfo*>(currentPeer->data)->netID == atoi(addportrait.c_str()))
+							{
+							    PlayerInfo* pinfo = (PlayerInfo*)peer->data;
+							    int x = pinfo->wrenchedBlockLocation % world->width;
+							    int y = pinfo->wrenchedBlockLocation / world->width;
+							    SendCanvasData(peer, world->items[pinfo->wrenchedBlockLocation].foreground, world->items[pinfo->wrenchedBlockLocation].background, x, y, ((PlayerInfo*)(peer->data))->netID, static_cast<PlayerInfo*>(peer->data)->rawName);
+							}
+						}
+					}
+				}
+//letakkan di bawah SendRainbowShitData, di world.h
+inline void SendCanvasData(ENetPeer* peer, short fg, short bg, int x, int y, int item, string text) {
+	byte* ExtendedData = new byte[15 + item + text.length()];
+	int state = 0x0010000;
+	int extendedLen = 15 + item + text.length();
+	int TextLen = text.length();
+	PlayerMoving pmov;
+	pmov.packetType = 0x5;
+	pmov.characterState = 0x8;
+	pmov.punchX = x;
+	pmov.punchY = y;
+	byte* raw = new byte[56 + 15 + item + TextLen];
+	memcpy(raw, packPlayerMoving(&pmov), 56);
+	memcpy(raw + 52, &extendedLen, 4);
+	memcpy(ExtendedData, &fg, 2);
+	memcpy(ExtendedData + 2, &bg, 2);
+	memcpy(ExtendedData + 4, &state, 4);
+	ExtendedData[8] = 0x23;
+	memcpy(ExtendedData + 9, &item, 4);
+	memcpy(ExtendedData + 13, &TextLen, 2);
+	memcpy(ExtendedData + 15, text.data(), TextLen);
+	memcpy(raw + 56, ExtendedData, extendedLen);
+	SendPacketRaw3(4, raw, 56 + 15 + item + TextLen, 0, peer, ENET_PACKET_FLAG_RELIABLE);
+	delete[] ExtendedData; // fix memleak by playingo
+}
+
+//letakkan di tile.h, pada bagian SendTileUpdate di atas if (world->items[x + (y * world->width)].foreground == 6952)
+if (world->items[x + (y * world->width)].foreground == 3818 && tile == 32) {
+				if (world->owner == "" || ((PlayerInfo*)(peer->data))->rawName == PlayerDB::getProperName(world->owner) || isWorldOwner(peer, world) || pinfo->adminLevel > 9) {
+					auto targetworld = getPlyersWorld(peer);
+					if (targetworld->items[x + (y * targetworld->width)].intdata != 0 && static_cast<PlayerInfo*>(peer->data)->rawName == getPlyersWorld(peer)->owner)
+					{
+						Player::OnDialogRequest(peer, "set_default_color|`o\n\nadd_label_with_icon|big|`wEdit Portrait``|left|3818|0|0|\nadd_spacer|small|\nadd_textbox|`oThis is a lovely portrait of a GrowTopian.|left|\nadd_textbox|`oYou'll need 4 Paint Bucket - Varnish to erase this|left|\nadd_text_input|artsign|Signed: |" + getItemDef(world->items[x + (y * world->width)].intdata).name + "|35|left|\nadd_smalltext|`oIf you'd like to touch up the painting slightly. you could change the expression:|left|\nadd_checkbox|unconcerned|Unconcerned|\nadd_checkbox|happy|Happy|\nend_dialog|portrait|Cancel|Okay|");
+						pinfo->wrenchedBlockLocation = x + (y * world->width);
+					}
+					else if (getPlyersWorld(peer)->owner == "" && targetworld->items[x + (y * targetworld->width)].intdata != 0)
+					{
+						Player::OnDialogRequest(peer, "set_default_color|`o\n\nadd_label_with_icon|big|`wEdit Portrait``|left|3818|0|0|\nadd_spacer|small|\nadd_textbox|`oThis is a lovely portrait of a GrowTopian.|left|\nadd_textbox|`oYou'll need 4 Paint Bucket - Varnish to erase this|left|\nadd_text_input|artsign|Title: |" + getItemDef(world->items[x + (y * world->width)].intdata).name + "|35|left|\nadd_smalltext|`oIf you'd like to touch up the painting slightly. you could change the expression:|left|\nadd_checkbox|unconcerned|Unconcerned|\nadd_checkbox|happy|Happy|\nend_dialog|portrait|Cancel|Okay|");
+						pinfo->wrenchedBlockLocation = x + (y * world->width);
+					}
+					else
+					{
+						Player::OnDialogRequest(peer, "set_default_color|`o\n\nadd_label_with_icon|big|`wPortrait``|left|3818|0|0|\nadd_spacer|small|\nadd_textbox|`oThe canvas is blank.|left|\nadd_player_picker|addportrait|`wPaint Someone|\nadd_smalltext|`5(Painting costs 2 Paint Bucket of each color)|left|\nend_dialog|portrait|Cancel|Okay|");
+						pinfo->wrenchedBlockLocation = x + (y * world->width);
+					}
+				}
+			}
